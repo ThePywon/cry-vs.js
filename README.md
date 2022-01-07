@@ -1,3 +1,3 @@
 # cry-vs.js
 
-##Javascript wrapper for the Crypto-Versus api
+## Javascript wrapper for the Crypto-Versus api
