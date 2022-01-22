@@ -28,7 +28,7 @@ to finally use the client, you can login using `Client.login`
 
     Client.login(apiKey);
 
-(see [getApiKey](getApiKey))
+(see [getApiKey](#api-keys))
 
 or
 
@@ -76,7 +76,7 @@ having the `keyEnabled` parameter set to true in the constructor can ensure that
 
     await Client.account.delete();
 
-After doing such, the client will be tagged as "invalid" (see [valid](isValid))
+After doing such, the client will be tagged as "invalid" (see [valid](#valid))
 
 
 
