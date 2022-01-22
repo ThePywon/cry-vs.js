@@ -13,18 +13,7 @@ client = function(options) {
   if(options && options.create !== undefined && typeof options.create != "boolean")
     throw new Error("Client: Contructor parameter create is not of type bool.");
 
-  var emitter = new Emitter();
-  Object.defineProperty(this, "events", {
-    get:()=>{return emitter.events}
-  });
-  Object.defineProperty(this, "on", {
-    enumerable:true,
-    get:()=>{return emitter.on}
-  });
-  Object.defineProperty(this, "emit", {
-    enumerable:true,
-    get:()=>{return emitter.emit}
-  });
+  Emitter.from(this);
 
   var isValid = true;
   Object.defineProperty(this, "isValid", {
@@ -36,6 +25,8 @@ client = function(options) {
     enumerable:true,
     get:()=>{return isConnected}
   });
+
+  var refreshTimeout = setTimeout(()=>{},0);
 
   Object.defineProperty(this, "login", {
     enumerable:true,
@@ -57,8 +48,9 @@ client = function(options) {
         else throw new Error("Client: Function login called in an unexpected way.");
 
         handler.Post({
-          host, path:"/login"
+          host, path:"/api/login"
         }, loginOptions, res=>{
+          this.emit("debug", res);
 
           if(res.status.code == 200) {
             var user = {};
@@ -96,11 +88,13 @@ client = function(options) {
             }
             else finish();      
           }
-          else {
+          else if(res.status.code === 401) {
             if(options && options.create) {
               handler.Post({
-                host, path:"/signup"
+                host, path:"/api/signup"
               }, { ...loginOptions, keyEnabled: options.keyEnabled }, res=>{
+                this.emit("debug", res);
+
                 if(res.status.code == 200) {
                   var user = {};
                   Object.defineProperty(user, "name", {
@@ -144,15 +138,17 @@ client = function(options) {
     enumerable:true,
     get:()=>{return timeout=>{
 
-      setTimeout(()=>{
+      clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(()=>{
 
         if(!this.isValid) return;
 
         handler.Post({
-          host, path:"/refresh-token"
+          host, path:"/api/refresh-token"
         }, {
           token: this.token
         }, res=>{
+          this.emit("debug", res);
 
           if(res.status.code == 200) {
             key = true;
@@ -177,10 +173,11 @@ client = function(options) {
           throw new Error("Client: Api key disabled.");
 
         handler.Post({
-          host, path:"/key"
+          host, path:"/api/key"
         }, {
           token: this.token
         }, res=>{
+          this.emit("debug", res);
 
           if(res.status.code == 200) {resolve(res.content)}
           else throw new Error(`${res.status.message} ${res.status.code}\n${res.content}`);
@@ -199,11 +196,12 @@ client = function(options) {
           throw new Error("Client: Current client is invalid.");
         
         handler.Post({
-          host, path:"/edit-account"
+          host, path:"/api/edit-account"
         }, {
           token: this.token,
           ...options
         }, res=>{
+          this.emit("debug", res);
           
           if(res.status.code == 200) {
             key = true;
@@ -226,10 +224,11 @@ client = function(options) {
           throw new Error("Client: Current client is invalid.");
 
         handler.Post({
-          host, path:"/delete-account"
+          host, path:"/api/delete-account"
         }, {
           token: this.token
         }, res=>{
+          this.emit("debug", res);
 
           if(res.status.code == 200) {
             isValid = false;
@@ -246,9 +245,13 @@ client = function(options) {
     get:()=>{return account}
   });
 }
-})()
+})();
 const Client = client;
 client = undefined;
 delete(client);
+
+Client.prototype.toString = function toString() {
+  return `Client { ${this.isValid ? this.isConnected ? this.token : "Not Connected" : "Invalid"} }`
+}
 
 module.exports = Client;
