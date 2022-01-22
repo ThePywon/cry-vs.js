@@ -36,15 +36,17 @@ function request(options, callback, data) {
         try {
           result = JSON.parse(result);
           callback({
-          content:result,
-          headers:res.headers,
-          status:{
-            code:res.statusCode,
-            message:res.statusMessage
-          }
+            url:options.path,
+            content:result,
+            headers:res.headers,
+            status:{
+              code:res.statusCode,
+              message:res.statusMessage
+            }
         });
         }
         catch(e){callback({
+          url:options.path,
           content:result,
           headers:res.headers,
           status:{

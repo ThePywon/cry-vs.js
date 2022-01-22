@@ -1,5 +1,5 @@
 const LockedArray = function(from) {
-  var key = {};
+  var key = Symbol();
   var locked = false;
 
   var array = from instanceof Array ? Array.from(from) : [];
@@ -17,7 +17,7 @@ const LockedArray = function(from) {
 
   Object.defineProperty(this, "lock", {
     enumerable:true,
-    get:()=>{return ()=>{locked = true;}}
+    get:()=>{return ()=>{locked = true}}
   });
 
   Object.defineProperty(this, "unlock", {
@@ -89,6 +89,6 @@ const LockedArray = function(from) {
 LockedArray.prototype.valueOf = function valueOf()
 {return this.value}
 LockedArray.prototype.toString = function toString()
-{return this.value.toString()}
+{return "[object LockedArray]"}
 
 module.exports = LockedArray;
