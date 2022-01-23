@@ -1,5 +1,6 @@
 const handler = require("./https_handler.js");
 const Emitter = require("./emitter.js");
+const { Object } = require("./object-plus.js");
 
 const host = "cry-vs.herokuapp.com";
 
@@ -13,7 +14,7 @@ client = function(options) {
   if(options && options.create !== undefined && typeof options.create != "boolean")
     throw new Error("Client: Contructor parameter create is not of type bool.");
 
-  Emitter.from(this);
+  Object.inheritBaseProperties(this, new Emitter());
 
   var isValid = true;
   Object.defineProperty(this, "isValid", {
@@ -30,7 +31,7 @@ client = function(options) {
 
   Object.defineProperty(this, "login", {
     enumerable:true,
-    get:()=>{return (...args)=>{
+    value:function login(...args) {
       return new Promise((resolve, reject)=>{
         if(this.isConnected)
           throw new Error("Client: Cannot connect twice!");
@@ -66,7 +67,8 @@ client = function(options) {
             });
             Object.defineProperty(this, "user", {
               enumerable:true,
-              get:()=>{return user}
+              value:user,
+              writable:false
             });
 
             var token = res.content;
@@ -109,7 +111,8 @@ client = function(options) {
                   });
                   Object.defineProperty(this, "user", {
                     enumerable:true,
-                    get:()=>{return user}
+                    value:user,
+                    writable:false
                   });
 
                   var token = res.content;
@@ -131,12 +134,13 @@ client = function(options) {
           }
         });
       });
-    }}
+    },
+    writable:false
   });
 
   Object.defineProperty(this, "refresh", {
     enumerable:true,
-    get:()=>{return timeout=>{
+    value:function refresh(timeout) {
 
       clearTimeout(refreshTimeout);
       refreshTimeout = setTimeout(()=>{
@@ -159,12 +163,13 @@ client = function(options) {
           else throw new Error(`${res.status.message} ${res.status.code}\n${res.content}`);
         });
       }, timeout);
-    }}
+    },
+    writable:false
   });
 
   Object.defineProperty(this, "getApiKey", {
     enumerable:true,
-    get:()=>{return ()=>{
+    value:function getApiKey() {
 
       return new Promise((resolve, reject)=>{
         if(!this.isValid) 
@@ -183,13 +188,14 @@ client = function(options) {
           else throw new Error(`${res.status.message} ${res.status.code}\n${res.content}`);
         });
       });
-    }}
+    },
+    writable:false
   });
 
   var account = {};
   Object.defineProperty(account, "edit", {
     enumerable:true,
-    get:()=>{return options=>{
+    value:function edit(options) {
 
       return new Promise((resolve, reject)=>{
         if(!this.isValid) 
@@ -213,11 +219,12 @@ client = function(options) {
           else throw new Error(`${res.status.message} ${res.status.code}\n${res.content}`);
         });
       });
-    }}
+    },
+    writable:false
   });
   Object.defineProperty(account, "delete", {
     enumerable:true,
-    get:()=>{return ()=>{
+    value:function _delete() {
 
       return new Promise((resolve, reject)=>{
         if(!this.isValid) 
@@ -237,12 +244,14 @@ client = function(options) {
           else throw new Error(`${res.status.message} ${res.status.code}\n${res.content}`);
         });
       });
-    }}
+    },
+    writable:false
   });
 
   Object.defineProperty(this, "account", {
     enumerable:true,
-    get:()=>{return account}
+    value:account,
+    writable:false
   });
 }
 })();
@@ -250,6 +259,7 @@ const Client = client;
 client = undefined;
 delete(client);
 
+Object.defineProperty(Client, "name", {value:"Client"});
 Client.prototype.toString = function toString() {
   return `Client { ${this.isValid ? this.isConnected ? this.token : "Not Connected" : "Invalid"} }`
 }

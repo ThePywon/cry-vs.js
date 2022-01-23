@@ -14,25 +14,25 @@ first up, import it
 
 then create a new `Client` instance!
 
-    const Client = new CryptoVersus.Client();
+    const client = new CryptoVersus.Client();
 
-the constructor can be fed in several options that can affect the client's behaciour  
+the constructor can be fed in several options that can affect the client's behaviour  
 for example, feeding in `create: true` will allow the client to create an account in the off case that the client cannot connect due to a 401 response (account non-existant)  
 and feeding in `keyEnabled: true` will edit the account info to enable api keys on the account upon login in
 
-    const Client = new CryptoVersus.Client({create: true, keyEnabled: true});
+    const client = new CryptoVersus.Client({create: true, keyEnabled: true});
 
 ### Login
 
 to finally use the client, you can login using `Client.login`
 
-    Client.login(apiKey);
+    client.login(apiKey);
 
 (see [getApiKey](#api-keys))
 
 or
 
-    Client.login(username, password);
+    client.login(username, password);
 
 again, if you had the `create` parameter set to true in the constructor, using the login function with a username and password will create an account instead
 
@@ -41,7 +41,7 @@ again, if you had the `create` parameter set to true in the constructor, using t
 `Client.refresh()` does not serve much of a purpose except from refreshing the client's connection token  
 it is automatically called a second before the token's expiration to generate a new valid token for the client
 
-    Client.refresh(timeout);
+    client.refresh(timeout);
 
 `timeout` is simply a timeout in milliseconds, if undefined, the timeout defaults to 0 ms
 
@@ -52,7 +52,7 @@ it is automatically called a second before the token's expiration to generate a 
 `Client.getApiKey()` will refresh and return a brand new api key for the current account  
 if the account does not have api key enabled though, it will end up with an error
 
-    const key = await Client.getApiKey();
+    const key = await client.getApiKey();
 
 having the `keyEnabled` parameter set to true in the constructor can ensure that it will be enabled once you log into the account
 
@@ -60,7 +60,7 @@ having the `keyEnabled` parameter set to true in the constructor can ensure that
 
 `Client.account` is an object that handles account handling endpoints such as `/api/account/edit`
 
-    await Client.account.edit({
+    await client.account.edit({
       username:[username],
       password:[password],
       keyEnabled:[keyEnabled]
@@ -74,7 +74,7 @@ having the `keyEnabled` parameter set to true in the constructor can ensure that
 
 `Client.account` also contains a function that interacts with `/api/account/delete`
 
-    await Client.account.delete();
+    await client.account.delete();
 
 After doing such, the client will be tagged as "invalid" (see [valid](#valid))
 
