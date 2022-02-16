@@ -1,42 +1,182 @@
-const handler = require("./https_handler.js");
-const Emitter = require("./emitter.js");
-const { Object } = require("./object-plus.js");
+"use strict";
 
-const host = "cry-vs.herokuapp.com";
+const handler = require("@protagonists/https");
+const host = "crypto-versus.pywon.repl.co";
 
-var client;
-(()=>{
-var key = false;
+const hostHandler = require("./host.js");
 
-client = function(options) {
-  if(options && options.keyEnabled !== undefined && typeof options.keyEnabled != "boolean")
-    throw new Error("Client: Contructor parameter keyEnabled is not of type bool.");
-  if(options && options.create !== undefined && typeof options.create != "boolean")
-    throw new Error("Client: Contructor parameter create is not of type bool.");
+const { Logger } = require("@protagonists/logger");
 
-  Object.inheritBaseProperties(this, new Emitter());
+function Client(options) {
+  options = options || {};
+  options.keyEnabled = !!options.keyEnabled;
+  options.create = !!options.create;
+  options.debug = !!options.debug;
+  options.events = options.events === undefined || !!options.events;
+  Logger.setLogger(this);
+  !options.debug ? this.disableDefault("debug") : null;
+  if(options.ip && typeof options.ip !== "string") {
+    this.crit("Parameter 'ip' is not type of string. Ignored.");
+    options.ip = undefined;
+  }
+  if(options.events && !options.listener && !options.ip) {
+    this.crit("Cannot listen for events without having at least 'listener' or 'ip' parameter. Ignored.");
+    options.events = false;
+  }
+  if(!options.events) {
+    this.warn("Event listener is disabled, you can not receive any event update.");
+  }
 
-  var isValid = true;
-  Object.defineProperty(this, "isValid", {
-    enumerable:true,
-    get:()=>{return isValid}
+
+  const events = {};
+  let eventsEnabled = false;
+  let ip;
+  Object.defineProperties(events, {
+    enabled:{
+      enumerable:true,
+      get:()=>{return eventsEnabled}
+    },
+    ip:{
+      enumerable:true,
+      get:()=>{return ip}
+    }
   });
-  var isConnected = false;
-  Object.defineProperty(this, "isConnected", {
+  Object.freeze(events);
+  const user = {}
+  let username;
+  let keyEnabled = false;
+  Object.defineProperties(user, {
+    name:{
+      enumerable:true,
+      get:()=>{return username}
+    },
+    keyEnabled:{
+      enumerable:true,
+      get:()=>{return keyEnabled}
+    },
+    events:{
+      enumerable:true,
+      value:events,
+      writable:false
+    }
+  });
+  Object.defineProperty(this, "user", {
     enumerable:true,
-    get:()=>{return isConnected}
+    value:user,
+    writable:false
+  });
+  Object.freeze(user);
+
+
+  const account = {};
+  Object.defineProperty(this, "account", {
+    enumerable:true,
+    value:account,
+    writable:false
   });
 
-  var refreshTimeout = setTimeout(()=>{},0);
+
+  let token;
+  Object.defineProperty(this, "token", {
+    enumerable:true,
+    get:()=>{return token}
+  });
+
+
+  let isValid = true;
+  let isConnected = false;
+  Object.defineProperties(this, {
+    isValid:{
+      enumerable:true,
+      get:()=>{return isValid}
+    },
+    isConnected:{
+      enumerable:true,
+      get:()=>{return isConnected}
+    }
+  });
+
+
+  Object.defineProperty(account, "edit", {
+    enumerable:true,
+    value:(options)=>{
+
+      return new Promise((resolve, reject)=>{
+        if(!this.isValid) {
+          this.error("Current client is invalid.");
+          return;
+        }
+        
+        handler.Post({
+          host, path:"/api/edit-account"
+        }, {
+          token: this.token,
+          ...options
+        }, res=>{
+          this.debug(res);
+          
+          if(res.status.code == 200) {
+            username = res.headers.user;
+            keyEnabled = res.headers.key;
+          }
+          else this.error(`${res.status.message} ${res.status.code}\n${res.content}`);
+          resolve();
+        });
+      });
+    },
+    writable:false
+  });
+
+  Object.defineProperty(account, "delete", {
+    enumerable:true,
+    value:()=>{
+
+      return new Promise((resolve, reject)=>{
+        if(!this.isValid) {
+          this.error("Current client is invalid.");
+          return;
+        }
+
+        handler.Post({
+          host, path:"/api/delete-account"
+        }, {
+          token: this.token
+        }, res=>{
+          this.debug(res);
+
+          if(res.status.code == 200)
+            isValid = false;
+          else this.error(`${res.status.message} ${res.status.code}\n${res.content}`);
+          resolve();
+        });
+      });
+    },
+    writable:false
+  });
+  Object.freeze(account);
+
+
+  let refreshTimeout = setTimeout(()=>{},0);
+
+  if(options.events) {
+    hostHandler.create(options.listener || options.ip);
+    if(options.debug)
+      hostHandler.on("postRequest", (req, res, data)=>{this.debug(data)});
+  }
+
 
   Object.defineProperty(this, "login", {
     enumerable:true,
     value:function login(...args) {
       return new Promise((resolve, reject)=>{
-        if(this.isConnected)
-          throw new Error("Client: Cannot connect twice!");
-        if(!this.isValid)
-          throw new Error("Client: Current client is invalid.");
+        if(this.isConnected) {
+          this.crit("Cannot connect twice!");
+          return;
+        }
+        if(!this.isValid) {
+          this.error("Current client is invalid.");
+          return;
+        }
 
         var loginOptions;
         if(args.length == 2)
@@ -46,91 +186,58 @@ client = function(options) {
           }
         else if(args.length == 1)
           loginOptions = { key: args[0] }
-        else throw new Error("Client: Function login called in an unexpected way.");
+        else {
+          this.crit("Function login called in an unexpected way.");
+          return;
+        }
 
         handler.Post({
           host, path:"/api/login"
         }, loginOptions, res=>{
-          this.emit("debug", res);
+          this.debug(res);
 
           if(res.status.code == 200) {
-            var user = {};
-            Object.defineProperty(user, "name", {
-              enumerable:true,
-              get:()=>{return res.headers.user},
-              set:val=>{if(key) res.headers.user = val}
-            });
-            Object.defineProperty(user, "keyEnabled", {
-              enumerable:true,
-              get:()=>{return res.headers.key === "true"},
-              set:val=>{if(key) res.headers.key = val}
-            });
-            Object.defineProperty(this, "user", {
-              enumerable:true,
-              value:user,
-              writable:false
-            });
+            username = res.headers.user;
+            keyEnabled = res.headers.key === "true";
 
-            var token = res.content;
-            Object.defineProperty(this, "token", {
-              enumerable:true,
-              get:()=>{return token},
-              set:val=>{if(key) token = val}
-            });
+            token = res.content;
 
-            var finish = ()=>{
+            const finish = ()=>{
               isConnected = true;
               this.refresh(res.headers.expire-1000);
               this.emit("ready");
               resolve(res.content);
             }
 
-            if(options && options.keyEnabled !== undefined) {
-              this.account.edit({ keyEnabled: options.keyEnabled }).then(finish);
+            if(options.keyEnabled || options.events) {
+              this.account.edit({ keyEnabled: options.keyEnabled, events: {enabled: options.events, ip: options.ip}}).then(finish);
             }
             else finish();      
           }
           else if(res.status.code === 401) {
-            if(options && options.create) {
+            if(options.create) {
               handler.Post({
                 host, path:"/api/signup"
-              }, { ...loginOptions, keyEnabled: options.keyEnabled }, res=>{
-                this.emit("debug", res);
+              }, { ...loginOptions, keyEnabled: options.keyEnabled, events:{enabled: !!options.events, ip:"206.162.131.162"}}, res=>{
+                this.debug(res);
 
-                if(res.status.code == 200) {
-                  var user = {};
-                  Object.defineProperty(user, "name", {
-                    enumerable:true,
-                    get:()=>{return res.headers.user},
-                    set:val=>{if(key) res.headers.user = val}
-                  });
-                  Object.defineProperty(user, "keyEnabled", {
-                    enumerable:true,
-                    get:()=>{return res.headers.key === "true"},
-                    set:val=>{if(key) res.headers.key = val}
-                  });
-                  Object.defineProperty(this, "user", {
-                    enumerable:true,
-                    value:user,
-                    writable:false
-                  });
+                if(res.status.code === 200) {
+                  username = res.headers.user;
+                  keyEnabled = res.headers.key === "true";
 
-                  var token = res.content;
-                  Object.defineProperty(this, "token", {
-                    enumerable:true,
-                    get:()=>{return token},
-                    set:val=>{if(key) token = val}
-                  });
+                  token = res.content;
 
                   isConnected = true;
                   this.refresh(res.headers.expire-1000);
                   this.emit("ready");
-                    resolve(res.content);
+                  resolve(res.content);
                 }
-                else throw new Error(`${res.status.message} ${res.status.code}\n${res.content}`);
+                else this.error(`${res.status.message} ${res.status.code}\n${res.content}`);
+                return;
               });
             }
-            else throw new Error(`${res.status.message} ${res.status.code}\n${res.content}`);
+            else this.error(`${res.status.message} ${res.status.code}\n${res.content}`);
+            return;
           }
         });
       });
@@ -145,22 +252,24 @@ client = function(options) {
       clearTimeout(refreshTimeout);
       refreshTimeout = setTimeout(()=>{
 
-        if(!this.isValid) return;
+        if(!this.isValid) {
+          this.error("Current client is invalid.");
+          return;
+        }
 
         handler.Post({
           host, path:"/api/refresh-token"
-        }, {
-          token: this.token
-        }, res=>{
-          this.emit("debug", res);
+        }, { token }, res=>{
+          this.debug(res);
+          this.log(token);
+          this.log(res.content);
 
           if(res.status.code == 200) {
-            key = true;
-            this.token = res.content;
-            key = false;
+            token = res.content;
             this.refresh(res.headers.expire-1000);
           }
-          else throw new Error(`${res.status.message} ${res.status.code}\n${res.content}`);
+          else this.error(`${res.status.message} ${res.status.code}\n${res.content}`);
+          return;
         });
       }, timeout);
     },
@@ -172,96 +281,59 @@ client = function(options) {
     value:function getApiKey() {
 
       return new Promise((resolve, reject)=>{
-        if(!this.isValid) 
-          throw new Error("Client: Current client is invalid.");
-        if(!this.user.keyEnabled)
-          throw new Error("Client: Api key disabled.");
+        if(!this.isValid) {
+          this.error("Current client is invalid.");
+          return;
+        }
+        if(!keyEnabled) {
+          this.error("Api key disabled.");
+          return;
+        }
 
         handler.Post({
           host, path:"/api/key"
-        }, {
-          token: this.token
-        }, res=>{
-          this.emit("debug", res);
+        }, { token }, res=>{
+          this.debug(res);
 
           if(res.status.code == 200) {resolve(res.content)}
-          else throw new Error(`${res.status.message} ${res.status.code}\n${res.content}`);
+          else this.error(`${res.status.message} ${res.status.code}\n${res.content}`);
+          return;
         });
       });
     },
     writable:false
   });
 
-  var account = {};
-  Object.defineProperty(account, "edit", {
+  Object.defineProperty(this, "dostuff", {
     enumerable:true,
-    value:function edit(options) {
+    value:function dostuff() {
 
       return new Promise((resolve, reject)=>{
-        if(!this.isValid) 
-          throw new Error("Client: Current client is invalid.");
-        
+        if(!this.isValid) {
+          this.error("Current client is invalid.");
+          return;
+        }
+
         handler.Post({
-          host, path:"/api/edit-account"
-        }, {
-          token: this.token,
-          ...options
-        }, res=>{
-          this.emit("debug", res);
-          
-          if(res.status.code == 200) {
-            key = true;
-            this.user.name = res.headers.user;
-            this.user.keyEnabled = res.headers.key;
-            key = false;
-            resolve();
-          }
-          else throw new Error(`${res.status.message} ${res.status.code}\n${res.content}`);
+          host, path:"/api/dostuff"
+        }, { token }, res=>{
+          this.debug(res);
+
+          if(res.status.code == 200) {resolve(res.content)}
+          else this.error(`${res.status.message} ${res.status.code}\n${res.content}`);
+          return;
         });
       });
     },
-    writable:false
-  });
-  Object.defineProperty(account, "delete", {
-    enumerable:true,
-    value:function _delete() {
-
-      return new Promise((resolve, reject)=>{
-        if(!this.isValid) 
-          throw new Error("Client: Current client is invalid.");
-
-        handler.Post({
-          host, path:"/api/delete-account"
-        }, {
-          token: this.token
-        }, res=>{
-          this.emit("debug", res);
-
-          if(res.status.code == 200) {
-            isValid = false;
-            resolve();
-          }
-          else throw new Error(`${res.status.message} ${res.status.code}\n${res.content}`);
-        });
-      });
-    },
-    writable:false
-  });
-
-  Object.defineProperty(this, "account", {
-    enumerable:true,
-    value:account,
     writable:false
   });
 }
-})();
-const Client = client;
-client = undefined;
-delete(client);
 
 Object.defineProperty(Client, "name", {value:"Client"});
-Client.prototype.toString = function toString() {
-  return `Client { ${this.isValid ? this.isConnected ? this.token : "Not Connected" : "Invalid"} }`
-}
+Object.defineProperty(Client, "toString", {
+  value:function toString() {
+    return `Client { ${this.isValid ? this.isConnected ? this.token : "Not Connected" : "Invalid"} }`
+  }
+});
 
 module.exports = Client;

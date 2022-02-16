@@ -134,12 +134,20 @@ console:
 this is usually always true unless the client was used to delete the account  
 in which case the client will become invalid
 
-    console.log(Client.isValid);
+    console.log(client.isValid); // true or false
 
 ### Connected
 
 `Client.isConnected` returns the client's connected state  
 this is held false until `Client.login` is called successfully
 
-    console.log(Client.isConnected);
+    console.log(client.isConnected); // true or false
+
+### Token
+
+`Client.token` returns the client's token IF connected  
+otherwise, the value is left undefined
+
+    console.log(client.token); // current token
+
 
