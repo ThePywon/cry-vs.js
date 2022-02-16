@@ -2,11 +2,31 @@
 
 ## Javascript wrapper for the Crypto-Versus api
 
-## How to use?
+# Table of content
 
-## Functions
+* [How to use?](#how-to-use)
+* [Properties](#properties)
+  * [`Client.isValid`](#clientisvalid)
+  * [`Client.isConnected`](#clientisconnected)
+  * [`Client.token`](#clienttoken)
+* [Constructor Options](#options)
+  * [`create`](#create)
+  * [`keyEnabled`](#keyenabled)
+  * [`debug`](#debug)
+  * [`ip`](#ip)
+  * [`listener`](#listener)
+* [Functions](#functions)
+  * [`Client.login`](#clientlogin)
+  * [`Client.refresh`](#clientrefresh)
+  * [`Client.getApiKey`](#clientgetapikey)
+  * [`Client.account.edit`](#clientaccountedit)
+  * [`Client.account.delete`](#clientaccountdelete)
+  * [`Client.dostuff`](#clientdostuff)
+* [Events](#events)
+  * [ready](#ready)
+  * [debug](#debug)
 
-### Constuctor
+# How to use?
 
 First up, import it
 
@@ -22,18 +42,100 @@ then create a new `Client` instance!
 const client = new CryptoVersus.Client();
 ```
 
-#### Options
+
+
+# Properties
+
+## Client.isValid
+
+### Description
+
+`Client.isValid` returns the client's valid state  
+this is usually always true unless the client was used to delete the account  
+in which case the client will become invalid
+
+### Returned value
+
+```js
+Boolean
+```
+
+### Example
+
+#### Code:
+
+```js
+console.log(client.isValid); // true or false
+```
+
+#### Output:
+
+    true
+
+## Client.isConnected
+
+### Description
+
+`Client.isConnected` returns the client's connected state  
+this is held false until `Client.login` is called successfully
+
+### Returned value
+
+```js
+Boolean
+```
+
+### Example
+
+#### Code:
+
+```js
+console.log(client.isConnected); // true or false
+```
+
+#### Output:
+
+    false
+
+## Client.token
+
+### Description
+
+`Client.token` returns the client's token IF connected  
+otherwise, the value is left undefined
+
+### Returned value
+
+```js
+String?
+```
+
+### Example
+
+#### Code:
+
+```js
+console.log(client.token); // current token
+```
+
+#### Output:
+
+    My-String-Token
+
+# Constuctor
+
+## Options
 
 The constructor can be fed in several parameter options that can affect the client's behaviour  
 
-##### create
+### create
 
 Setting the option `create` to **true** will allow the client to create an account in the off case that the client cannot connect due to a 401 response (account non-existant)  
 ```js
 const client = new CryptoVersus.Client({create: true});
 ```
 
-##### keyEnabled
+### keyEnabled
 
 Setting `keyEnabled` to **true** will edit the account data to enable api keys on the account upon login in  
 This is all done before the "ready" event is emitted of course, so you do not have to worry about waiting for the account to update
@@ -42,7 +144,7 @@ This is all done before the "ready" event is emitted of course, so you do not ha
 const client = new CryptoVersus.Client({keyEnabled: true});
 ```
 
-##### debug
+### debug
 
 `debug` is a bit more interesting...  
 It will show detailed info about all endpoint responses as well as any event data sent to the client
@@ -51,7 +153,7 @@ It will show detailed info about all endpoint responses as well as any event dat
 const client = new CryptoVersus.Client({debug: true});
 ```
 
-##### ip
+### ip
 
 `ip` is the domain from which *webhooks* will send data to when the api is sending events
 
@@ -62,7 +164,7 @@ Because clients cannot receive api events if there is no domain for the events t
 const client = new CryptoVersus.Client({ip: "myIpOrDomain"});
 ```
 
-##### listener
+### listener
 
 `listener` is the domain from which the *client* will create a listener to and handle events from
 
@@ -72,135 +174,185 @@ now, again, although having an ip and listener is not nessecary, it is highly su
 const client = new CryptoVersus.Client({listener: "myIpOrDomain"});
 ```
 
-*take note that if both your ip and listener are the same, you may simply use the ip alone  
+*take note that if both your ip and listener are the same, you could simply use the ip alone  
 The client defaults to the ip if the listener is not set
 
-### Login
 
-to finally use the client, you can login using `Client.login`
 
-    client.login(apiKey);
+# Functions
 
-(see [getApiKey](#api-keys))
+## Client.Login
+
+### Description
+
+This function will essentially log you into the api using either a username and password or an api key
+
+### Syntax
+
+```js
+Client.login(username: String, password: String)
+```
 
 or
 
-    client.login(username, password);
+```js
+Client.login(key: String)
+```
 
-again, if you had the `create` parameter set to true in the constructor, using the login function with a username and password will create an account instead
+### Example
 
-### Refresh*
+```js
+client.login("username", "password");
+```
 
-`Client.refresh()` does not serve much of a purpose except from refreshing the client's connection token  
+or
+
+```js
+client.login("apiKey");
+```
+
+(see [getApiKey](#api-keys))
+
+again, if you have the `create` parameter set to true in the constructor,
+using the login function with a username and password will create an account instead,
+although take note that this does not apply if you're using an api key
+
+## Client.Refresh
+
+### Description
+
+`Client.refresh` does not serve much of a purpose except from refreshing the client's connection token  
 it is automatically called a second before the token's expiration to generate a new valid token for the client
 
-    client.refresh(timeout);
+*this function does not return a `Token` nor can it be awaited
+
+### Syntax
+
+```js
+Client.refresh(timeout: Number)
+```
+
+### Example
+
+```js
+client.refresh(timeout);
+```
 
 `timeout` is simply a timeout in milliseconds, if undefined, the timeout defaults to 0 ms
 
-\*this function does not return a `Token` nor is it asynchronous
+## Client.getApiKey
 
-### Api Keys
+### Description
 
 `Client.getApiKey()` will refresh and return a brand new api key for the current account  
 if the account does not have api key enabled though, it will end up with an error
 
-    const key = await client.getApiKey();
+### Syntax
+
+```js
+Client.getApiKey()
+```
+
+### Example
+
+```js
+const key = await client.getApiKey();
+```
 
 having the `keyEnabled` parameter set to true in the constructor can ensure that it will be enabled once you log into the account
 
-### Edit Account
+## Client.account.edit
 
-`Client.account` is an object that handles account handling endpoints such as `/api/account/edit`
+### Description
 
-    await client.account.edit({
-      username:[username],
-      password:[password],
-      keyEnabled:[keyEnabled]
-    });
+`Client.account` handles account editing, from a new password to setting an event domain
 
-\[username] is the new username to set to the account  
-\[password] is the new password to set to the account  
-\[keyEnabled] edits either api keys are enabled or disabled on the account
+### Syntax
 
-### Delete Account
+```js
+Client.account.edit(options: Any)
+```
 
-`Client.account` also contains a function that interacts with `/api/account/delete`
+for detailed information about the expected format check out [`Account`](#account)
 
-    await client.account.delete();
+### Example
 
-After doing such, the client will be tagged as "invalid" (see [valid](#valid))
+```js
+await client.account.edit({
+  username:"new_username",
+  password:"new_password"
+});
+```
+
+## Client.account.delete
+
+### Description
+
+`Client.account` is prehaps the most destructive function of them all for obvious reasons
+
+### Syntax
+
+```js
+Client.account.delete()
+```
+
+### Example
+
+```js
+await client.account.delete();
+```
+
+After doing such, the client will be tagged as "invalid" (see [`Client.valid`](#clientisvalid))
+
+## Client.dostuff
+
+### Description
+
+This function is entirely made to test out the webhook system of the api
+
+### Syntax
+
+```js
+Client.dostuff()
+```
+
+### Example
+
+```js
+await client.dostuff();
+```
+
+Having debug messages enabled will show that an event object gets sent to the client upon calling the function
 
 
+# Events
 
-## Events
+The client will occasionally send events that can be of use to users
+Please take in note that the mentionned events are **NOT** the only events that can be sent from the client,  
+thoses showed below are merely the events that are completely or partially handled by the client
 
-the client will occasionally send events that can be of use to us users
+To learn more about such events, check out this other package: [`@protagonists/emitter`](https://www.npmjs.com/package/@protagonists/emitter)
 
-### ready
+## ready
 
 the ready event is sent when the client logs in
 
-    Client.on("ready", ()=>{
-      //Your code!
-    });
+```js
+Client.on("ready", ()=>{
+  //Your code!
+});
+```
 
-### debug
+## debug
 
-the debug event is sent whenever a request is sent to the api
+the debug event is sent whenever a request is sent to the api or the client receives data from the api
 
-    Client.on("debug", res=>{
-      //Your code!
-    });
+```js
+Client.on("debug", res=>{
+  //Your code!
+});
+```
 
-it is passed in a response object info such as the status, content and headers and more
-
-    Client.on("debug", console.log);
-
-console:
-
-    {
-      url:[endpoint],
-      content:[response content],
-      headers:{
-        [headers]
-      },
-      status:{
-        code:[status code],
-        message:[status message]
-      }
-    }
-
-\[endpoint] is the fetched endpoint  
-\[response content] is the api response content  
-\[headers] are the api response's headers  
-\[status code] is the api response status code  
-\[status message] is the api response status message
-
-
-
-## Properties
-
-### Valid
-
-`Client.isValid` returns the client's valid state  
-this is usually always true unless the client was used to delete the account  
-in which case the client will become invalid
-
-    console.log(client.isValid); // true or false
-
-### Connected
-
-`Client.isConnected` returns the client's connected state  
-this is held false until `Client.login` is called successfully
-
-    console.log(client.isConnected); // true or false
-
-### Token
-
-`Client.token` returns the client's token IF connected  
-otherwise, the value is left undefined
-
-    console.log(client.token); // current token
+For more information about the response object's format, go check out this package: [`@protagonists/https`](https://www.npmjs.com/package/@protagonists/https)
 
 
