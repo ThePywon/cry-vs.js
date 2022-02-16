@@ -8,19 +8,72 @@
 
 ### Constuctor
 
-first up, import it
+First up, import it
 
-    const CryptoVersus = require("@protagonists/cry_vs");
+`npm i @protagonists/cry_vs`
+
+```js
+const CryptoVersus = require("@protagonists/cry_vs");
+```
 
 then create a new `Client` instance!
 
-    const client = new CryptoVersus.Client();
+```js
+const client = new CryptoVersus.Client();
+```
 
-the constructor can be fed in several options that can affect the client's behaviour  
-for example, feeding in `create: true` will allow the client to create an account in the off case that the client cannot connect due to a 401 response (account non-existant)  
-and feeding in `keyEnabled: true` will edit the account info to enable api keys on the account upon login in
+#### Options
 
-    const client = new CryptoVersus.Client({create: true, keyEnabled: true});
+The constructor can be fed in several parameter options that can affect the client's behaviour  
+
+##### create
+
+Setting the option `create` to **true** will allow the client to create an account in the off case that the client cannot connect due to a 401 response (account non-existant)  
+```js
+const client = new CryptoVersus.Client({create: true});
+```
+
+##### keyEnabled
+
+Setting `keyEnabled` to **true** will edit the account data to enable api keys on the account upon login in  
+This is all done before the "ready" event is emitted of course, so you do not have to worry about waiting for the account to update
+
+```js
+const client = new CryptoVersus.Client({keyEnabled: true});
+```
+
+##### debug
+
+`debug` is a bit more interesting...  
+It will show detailed info about all endpoint responses as well as any event data sent to the client
+
+```js
+const client = new CryptoVersus.Client({debug: true});
+```
+
+##### ip
+
+`ip` is the domain from which *webhooks* will send data to when the api is sending events
+
+If you do not have one set with your account yet, it is highly recommended that you set one
+Because clients cannot receive api events if there is no domain for the events to be sent to
+
+```js
+const client = new CryptoVersus.Client({ip: "myIpOrDomain"});
+```
+
+##### listener
+
+`listener` is the domain from which the *client* will create a listener to and handle events from
+
+now, again, although having an ip and listener is not nessecary, it is highly suggested for otherwise, the client cannot receive events from the api
+
+```js
+const client = new CryptoVersus.Client({listener: "myIpOrDomain"});
+```
+
+*take note that if both your ip and listener are the same, you may simply use the ip alone  
+The client defaults to the ip if the listener is not set
 
 ### Login
 
