@@ -1,6 +1,6 @@
 {
   "name": "@protagonists/cry_vs",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "A javascript wrapper for the Crypto Versus api.",
   "main": "cry_vs",
   "scripts": {
