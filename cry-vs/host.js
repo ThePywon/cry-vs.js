@@ -13,7 +13,7 @@ Object.defineProperty(host, "host", {
 
 Object.defineProperty(host, "create", {
   enumerable:true,
-  value:function create(h) {
+  value: function create(h) {
     const server = http.createServer(requestListener);
 
     server.listen(443, h, () => host.emit("ready"));
